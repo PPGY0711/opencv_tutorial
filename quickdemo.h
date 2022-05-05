@@ -1,5 +1,6 @@
 //
 // Created by Guanyan Peng on 2022/5/3.
+// Last Update date: 2022/5/5
 //
 #include "opencv2/opencv.hpp"
 using namespace cv;
@@ -29,5 +30,10 @@ public:
     void videoDemo();
     void showHistogramDemo(Mat& image);
     void showHistogram2DDemo(Mat& image);
+    void histogramEqualizationDemo(Mat& image);
+    void blurDemo(Mat& image);
+    void gaussianBlueDemo(Mat& image);
+    void biFilterDemo(Mat& image);
+    void faceDetectionDemo();
 };
 #endif //QUICKDEMO_H

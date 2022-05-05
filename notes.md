@@ -942,7 +942,7 @@ void QuickDemo::videoDemo() {
 1. 灰度直方图
 2. 颜色直方图
 
-Bins是指直方图的大小范围，对于像素值取值在0~255之间的，最少有256个bin，此外还可以有16、32、48、128等，256除以bin的大小应该是整数倍。
+Bins是指直方图的大小范围(灰度级别），对于像素值取值在0~255之间的，最少有256个bin，此外还可以有16、32、48、128等，256除以bin的大小应该是整数倍。
 
 OpenCV中相关的API有：
 1. ```calcHist(&bgr_plane[0], 1, 0, Mat(), b_hist, 1, bins, ranges);```
@@ -1016,3 +1016,175 @@ OpenCV中相关的API有：
 
 3. 二维的直方图
 ![](media/histogram_explanation.png)
+   
+
+## day22:直方图均衡化
+直方图均衡化(Histogram Equalization)可以用于图像增强，对输入图像进行直方图均衡化处理，提升后续对象检测的准确率在OpenCV人脸检测的代码演示中已经很常见。此外对医学影像图像与卫星遥感图像也经常通过直方图均衡化来提升图像质量。
+
+[直方图均衡化介绍](https://zhuanlan.zhihu.com/p/44918476)
+[OpenCV直方图均衡化计算](https://www.cnblogs.com/yanshw/p/15429887.html
+
+OpenCV中直方图均衡化的API：```equalizeHist(src, dst)```，需要注意的是该函数支持单通道，因此需要先转换成灰度图像
+
+一个直方图均衡化的计算例子
+
+|![](media/eqhist.png)|![](media/hist_cal.png)|
+|---|---|
+
+一个直方图均衡化前后的图像例子
+
+|![](media/originhist.png)|![](media/aftereqhist.png)|
+|---|---|
+
+在demo部分的代码中还涉及到了彩色图像的直方图均衡化：操作是先把RGB彩色图像转成YCrCb格式，对Y分量做直方图均衡化，merge各个通道后转回BGR格式即可。
+
+
+## day23:图像卷积操作
+图像卷及操作可以看成是一个窗口区域在另外一个大的图像上移动，对每个窗口覆盖的区域都进行点乘得到的值作为中心像素点的输出值。窗口的移动是从左到右，从上到下。窗口可以理解成一个指定大小的二维矩阵，里面有预先指定的值。
+
+相关API（C++）
+1. ```c++
+   blur(InputArray src,                 //输入
+        OutputArray dst,                //输出
+        Size ksize,                     //窗口大小（kernel）
+        Point anchor=(-1,-1),           //默认值
+        int borderTYpe = BORDER_DEFAULT //默认值
+        )
+   /*
+    * 第一个参数，InputArray类型的src，输入图像，即源图像，填Mat类的对象即可。该函数对通道是独立处理的，且可以处理任意通道数的图片，但需要注意，待处理的图片深度应该为CV_8U, CV_16U, CV_16S, CV_32F 以及 CV_64F之一。
+    * 第二个参数，OutputArray类型的dst，即目标图像，需要和源图片有一样的尺寸和类型。比如可以用Mat::Clone，以源图片为模板，来初始化得到如假包换的目标图。
+    * 第三个参数，Size类型（对Size类型稍后有讲解）的ksize，内核的大小。一般这样写Size( w,h )来表示内核的大小( 其中，w 为像素宽度， h为像素高度)。Size（3,3）就表示3x3的核大小，Size（5,5）就表示5x5的核大小
+    * 第四个参数，Point类型的anchor，表示锚点（即被平滑的那个点），注意他有默认值Point(-1,-1)。如果这个点坐标是负值的话，就表示取核的中心为锚点，所以默认值Point(-1,-1)表示这个锚点在核的中心。
+    * 第五个参数，int类型的borderType，用于推断图像外部像素的某种边界模式。有默认值BORDER_DEFAULT，我们一般不去管它。
+    */
+   ```
+2. ```Python
+   dst = cv.blur(src, ksize[, dst[, anchor[, borderType]]])
+   ```
+
+卷积计算图示：本质是点乘，也是一种线性计算。边缘由于不能和卷积核完全重合因此没有变，一个5*5的图像经过3*3卷积核的计算，有效的计算点也是3*3了，边缘有两种处理方式，一是扔掉二是填充（padding）。卷积核的尺寸一般定义成奇数，对中心化更友好一些。
+![](media/juanji.png)
+
+以上例子中卷积核的权重全是1，叫做均值卷积，它的问题就是会让图像变得模糊，缩小了像素之间的差异，降低了对比度，会造成信息丢失，在OpenCV中blur函数可以做到均值卷积的效果。
+
+
+## day24:高斯模糊+高斯双边模糊
+1. 图像均值与高斯模糊 
+   
+均值模糊是卷积核的系数完全一致，高斯模糊考虑了中心像素距离的影响，对距离中心像素使用高斯公式生成不同的权重系数给卷积核，然后用此卷积核完成图像卷积得到输出结果就是图像高斯模糊之后的输出。 
+   
+OpenCV高斯模糊相关API:
+```c++
+void GaussianBlur{
+    InputArray src,
+    OutputArray dst,
+    Size ksize, //Ksize为高斯滤波器窗口大小
+    double sigmaX, //X方向滤波系数
+    double sigmaY, //Y方向滤波系数
+    int borderType=BORDER_DEFAULT //默认边缘系数插值方法
+};
+/*
+ * src – 输入图片，可以使是任意通道数，该函数对通道是独立处理的，但是深度只能是CV_8U, CV_16U, CV_16S, CV_32F or CV_64F.
+ * dst – 输出图片，和输入图片相同大小和深度。
+ * ksize – 高斯内核大小。ksize.width和ksize.height允许不相同但他们必须是正奇数。或者等于0，由参数sigma的乘积决定。
+ * sigmaX – 高斯内核在X方向的标准偏差。
+ * sigmaY – 高斯内核在Y方向的标准偏差。如果sigmaY为0，他将和sigmaX的值相同，如果他们都为0，那么他们由ksize.width和ksize.height计算得出。
+ * 在高斯分布中，方差可以理解为这个高斯分布的平缓程度，也就是说中间值所占比重的大小，方差越小，中间值所占比重越大，此时模糊的效果会相对更低一点（在同一个size下）
+ * borderType – 用于判断图像边界的模式。
+ */
+```
+
+高斯模糊的卷积核和计算公式、高斯核函数示意图如下：
+
+|![](media/gaussianblur.png)|![](media/gaussianKernel.png)|
+|---|---|
+
+2. 边缘保留滤波算法-高斯双边模糊
+
+前面我们介绍的图像卷积处理无论是均值还是高斯都是属于模糊卷积，它们都有一 个共同的特点就是模糊之后图像的叫息不复存在，受到了破坏。我们今天介绍 的滤波方法有能力通过卷积处理实现图像模糊的同时对图像边缘不会造成破坏，滤 波之后的输出完整的保存了图像整体边缘（轮廓）信息，我们称这类滤波算法为边 缘保留滤波算法（EPF）。最常见的边缘保留滤波算法有以下几种
+- 高斯双边模糊
+- Meanshifti匀值迁移模糊
+- 局部均方差模糊
+- OpenCV中对边缘保留滤波还有一专门的API
+
+高斯模糊是考虑图像空间位置对权重的影响，但是它没有考虑图像像素分布对图像卷积输出的影响，双边模糊考虑像素值分布的影响，对像素值空间分布差异较大的进行保留从而完整地保留了图像的边缘信息
+```c++
+void bilateralFilter(
+   InputArray src,
+   OutputArray 	dst,
+   int 	d,
+   double 	sigmaColor,
+   double 	sigmaSpace,
+   int 	borderType = BORDER_DEFAULT
+)
+/*
+ * InputArray src: 输入图像，可以是Mat类型，图像必须是8位或浮点型单通道、三通道的图像。 
+ * OutputArray dst: 输出图像，和原图像有相同的尺寸和类型。 
+ * int d: 表示在过滤过程中每个像素邻域的直径范围。如果这个值是非正数，则函数会从第五个参数sigmaSpace计算该值。 
+ * double sigmaColor: 颜色空间过滤器的sigma值，这个参数的值月大，表明该像素邻域内有越宽广的颜色会被混合到一起，产生较大的半相等颜色区域。
+ * double sigmaSpace: 坐标空间中滤波器的sigma值，如果该值较大，则意味着越远的像素将相互影响，从而使更大的区域中足够相似的颜色获取相同的颜色。当d>0时，d指定了邻域大小且与sigmaSpace无关，否则d正比于sigmaSpace.
+ *int borderType=BORDER_DEFAULT: 用于推断图像外部像素的某种边界模式，有默认值BORDER_DEFAULT.
+ */
+```
+
+![](media/bifilter.jpeg)
+
+双边滤波器可以很好的保存图像边缘细节而滤除掉低频分量的噪音，但是双边滤波器的效率不是太高，花费的时间相较于其他滤波器而言也比较长。
+
+3. 其他资料
+
+[OpenCV高斯双边模糊介绍](https://blog.csdn.net/qq_41498261/article/details/101618119)
+
+[均值、中值、双边、高斯模糊介绍](http://www.4k8k.xyz/article/Vici__/102476784)
+
+
+## day25:实时人脸检测
+直接借助OpenCV4自带的dnn模块，不过所用的模型是从老师Github上下载的，效果很差。
+```c++
+void QuickDemo::faceDetectionDemo() {
+    // 效果很垃圾的感觉
+    std::string rootDir = "../face_detector/";
+    cv::dnn::Net net = cv::dnn::readNetFromTensorflow(rootDir + "opencv_face_detector_uint8.pb",rootDir + "opencv_face_detector.pbtxt");
+    // 用摄像头拍自己
+//    VideoCapture capture(0);
+    VideoCapture capture(rootDir + "face_detector.avi");
+    Mat frame;
+    while(true){
+        capture.read(frame);
+        if(frame.empty()){
+            break;
+        }
+        /*
+         * scalefactor：图像像素数值normalize到0-1.0
+         * Size，mean都是和模型有关的
+         * SwapRB：是否要交换RB
+         */
+        Mat blob = dnn::blobFromImage(frame, 1.0, Size(300,300), Scalar(104,177,123), false, false);
+        net.setInput(blob); // 出来的格式是NCHW
+        Mat probs = net.forward(); // 4个维度，第一维是图像编号，img的index；第二个维度对应该img的批次，即batch index；第三个维度表示有多少个框；第四个维度表示每个框有7个值（7列）？
+
+        // 解析结果
+        Mat detectionMat(probs.size[2],probs.size[3], CV_32F, probs.ptr<float>());
+        for(int i = 0; i < detectionMat.rows; i++){
+            //解析检测到的框
+            float confidence = detectionMat.at<float>(i,2);
+            // 若置信度大于0.5则认为检测到了人脸
+            if(confidence > 0.5){
+                // 解析矩形框的坐标，预测出来的值是0~1的，必须乘以宽度才是正确的像素坐标
+                int x1 = static_cast<int>(detectionMat.at<float>(i,3)*frame.cols);
+                int y1 = static_cast<int>(detectionMat.at<float>(i,4)*frame.cols);
+                int x2 = static_cast<int>(detectionMat.at<float>(i,5)*frame.cols);
+                int y2 = static_cast<int>(detectionMat.at<float>(i,6)*frame.cols);
+                std::cout << x1 << "," << y1 << ", " << x2 << ", " << y2 << std::endl;
+                Rect box(x1,y1,x2-x1,y2-y1);
+                rectangle(frame, box, Scalar(0,0,255),2,LINE_8, 0);
+                imshow("face detection", frame);
+            }
+        }
+        int c = waitKey(100);
+        if(c == 27 || c == 13){
+            break;
+        }
+    }
+}
+```

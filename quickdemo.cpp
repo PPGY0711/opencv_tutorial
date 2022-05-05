@@ -1,22 +1,11 @@
 //
-// Created by 彭官妍 on 2022/5/3.
+// Created by Guanyan Peng on 2022/5/3.
+// Last Update date: 2022/5/5
 //
 
-// day3
-//#include "quickdemo.h"
-//void QuickDemo::colorSpace_Demo(Mat &image) {
-//    Mat gray,hsv;
-//    cvtColor(image, hsv, COLOR_BGR2HSV);
-//    // H 0~180（颜色）,S（饱和度）,V(亮度）
-//    cvtColor(image, gray, COLOR_BGR2GRAY);
-//    imshow("HSV", hsv);
-//    imshow("GRAY", gray);
-//    imwrite("../test/hsv.png", hsv);
-//    imwrite("../test/gray.png", gray);
-//}
-
-// day4
 #include "quickdemo.h"
+#include <opencv2/dnn.hpp>
+
 void QuickDemo::colorSpaceDemo(Mat &image) {
     Mat gray,hsv;
     cvtColor(image, hsv, COLOR_BGR2HSV);
@@ -560,7 +549,7 @@ void QuickDemo::videoDemo() {
     capture.release();
 }
 
-void QuickDemo::showHistogramDemo(Mat &image) {
+static void histogramCalculation(Mat& image, Mat& histImage){
     std::vector<Mat> bgr_plane;
     split(image, bgr_plane);
     const int channels[1] = {0};
@@ -579,7 +568,7 @@ void QuickDemo::showHistogramDemo(Mat &image) {
     // 显示直方图
     int hist_w = 512, hist_h = 400;
     int bin_w = cvRound((double)(hist_w/bins[0]));
-    Mat histImage = Mat::zeros(hist_h, hist_w, CV_8UC3);
+    histImage = Mat::zeros(hist_h, hist_w, CV_8UC3);
     // 归一化直方图数据(因为有的像素值可能频率非常高，这里归一化是为了不超过画布许可的范围，使用到的就是范围归一化）
     normalize(b_hist, b_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
     normalize(g_hist, g_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
@@ -595,6 +584,11 @@ void QuickDemo::showHistogramDemo(Mat &image) {
         line(histImage, Point(bin_w*(i-1), hist_h- cvRound(r_hist.at<float>(i-1))),
              Point(bin_w*i, hist_h- cvRound(r_hist.at<float>(i))), Scalar(0,0,255),2,LINE_8,0);
     }
+}
+
+void QuickDemo::showHistogramDemo(Mat &image) {
+    Mat histImage;
+    histogramCalculation(image, histImage);
     // 显示直方图
     namedWindow("Histogram", WINDOW_AUTOSIZE);
     imshow("Histogram", histImage);
@@ -629,4 +623,131 @@ void QuickDemo::showHistogram2DDemo(Mat &image) {
     applyColorMap(hist2dImage, hist2dImage, COLORMAP_BONE);
     imshow("H-S Histogram", hist2dImage);
     imwrite("../test/hist2d.png", hist2dImage);
+}
+
+static Mat claheDeal(Mat &src, double ClipLimit = 40.0, int TilesGridSize = 8)
+{
+    Mat ycrcb = src.clone();
+    std::vector<cv::Mat> channels;
+    //YCrCb色彩空间：Y为颜色的亮度（luma）成分、而CB和CR则为蓝色和红色的浓度偏移量成分。
+    //只有Y成分的图基本等同于彩色图像的灰度图。
+    cv::cvtColor(ycrcb, ycrcb, cv::COLOR_BGR2YCrCb);
+    cv::split(ycrcb, channels);
+    cv::Mat clahe_img;
+    //opencv源码中原型：  createCLAHE(double clipLimit = 40.0, Size tileGridSize = Size(8, 8));
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+
+    clahe->setClipLimit(ClipLimit);
+    clahe->setTilesGridSize(Size(TilesGridSize, TilesGridSize));
+    clahe->apply(channels[0], clahe_img);
+    channels[0].release();
+    clahe_img.copyTo(channels[0]);
+    cv::merge(channels, ycrcb);
+    cv::cvtColor(ycrcb, ycrcb, cv::COLOR_YCrCb2BGR);
+    return ycrcb;
+}
+
+void QuickDemo::histogramEqualizationDemo(Mat &image) {
+    // 对灰度图像进行直方图均衡化
+    Mat gray,dst;
+    cvtColor(image, gray, COLOR_BGR2GRAY);
+    equalizeHist(gray, dst);
+    imshow("gray", gray);
+    imshow("equalize hist", dst);
+
+    // 对彩色图像进行直方图均衡化，通过图像色彩格式转换来实现，Y分量基本就是图像的灰阶版本
+    Mat ycrcb, eq, histEq, histOri;
+    histogramCalculation(image, histOri);
+    imshow("Histogram Original image", histOri);
+    std::vector<Mat> yuv;
+    cvtColor(image, ycrcb, COLOR_BGR2YCrCb);
+    split(ycrcb, yuv);
+    // equalize Y channel
+    equalizeHist(yuv[0],yuv[0]);
+    // merge channels
+    merge(yuv, eq);
+    cvtColor(eq, eq, COLOR_YCrCb2BGR);
+    imshow("Equalized Y", eq);
+    histogramCalculation(eq, histEq);
+    imshow("Equalized color image histogram", histEq);
+
+    // 局部直方图均衡化
+    double clipLimit = 4.0;
+    int tilesGridSize = 8;
+    Mat claheRes = claheDeal(image, clipLimit, tilesGridSize);
+    imshow("c4.0 t8 CLAHE", claheRes);
+
+    clipLimit = 8.0;
+    Mat claheRes2 = claheDeal(image, clipLimit, tilesGridSize);
+    imshow("c8.0 t8 CLAHE", claheRes2);
+
+    clipLimit = 16.0;
+    Mat claheRes3 = claheDeal(image, clipLimit, tilesGridSize);
+    imshow("c16.0 t8 CLAHE", claheRes3);
+}
+
+void QuickDemo::blurDemo(Mat &image) {
+    Mat dst;
+    // 注意这里处理边缘是按照默认方式进行处理的,blur是一种平滑处理、空间滤波方式，可以支持一维、二维卷积
+    blur(image, dst, Size(15,15), Point(-1,-1));
+    imshow("blur", dst);
+}
+
+void QuickDemo::gaussianBlueDemo(Mat &image) {
+    Mat dst;
+    GaussianBlur(image, dst, Size(5,5), 15);
+    imshow("Gaussian blur", dst);
+}
+
+void QuickDemo::biFilterDemo(Mat &image) {
+    Mat dst;
+    bilateralFilter(image, dst, 0, 100, 10);
+    imshow("Gaussian blur", dst);
+}
+
+void QuickDemo::faceDetectionDemo() {
+    // 效果很垃圾的感觉
+    std::string rootDir = "../face_detector/";
+    cv::dnn::Net net = cv::dnn::readNetFromTensorflow(rootDir + "opencv_face_detector_uint8.pb",rootDir + "opencv_face_detector.pbtxt");
+    // 用摄像头拍自己
+//    VideoCapture capture(0);
+    VideoCapture capture(rootDir + "face_detector.avi");
+    Mat frame;
+    while(true){
+        capture.read(frame);
+        if(frame.empty()){
+            break;
+        }
+        /*
+         * scalefactor：图像像素数值normalize到0-1.0
+         * Size，mean都是和模型有关的
+         * SwapRB：是否要交换RB
+         */
+        Mat blob = dnn::blobFromImage(frame, 1.0, Size(300,300), Scalar(104,177,123), false, false);
+        net.setInput(blob); // 出来的格式是NCHW
+        Mat probs = net.forward(); // 4个维度，第一维是图像编号，img的index；第二个维度对应该img的批次，即batch index；第三个维度表示有多少个框；第四个维度表示每个框有7个值（7列）？
+
+        // 解析结果
+        Mat detectionMat(probs.size[2],probs.size[3], CV_32F, probs.ptr<float>());
+        for(int i = 0; i < detectionMat.rows; i++){
+            //解析检测到的框
+            float confidence = detectionMat.at<float>(i,2);
+            // 若置信度大于0.5则认为检测到了人脸
+            if(confidence > 0.5){
+                // 解析矩形框的坐标，预测出来的值是0~1的，必须乘以宽度才是正确的像素坐标
+                int x1 = static_cast<int>(detectionMat.at<float>(i,3)*frame.cols);
+                int y1 = static_cast<int>(detectionMat.at<float>(i,4)*frame.cols);
+                int x2 = static_cast<int>(detectionMat.at<float>(i,5)*frame.cols);
+                int y2 = static_cast<int>(detectionMat.at<float>(i,6)*frame.cols);
+                std::cout << x1 << "," << y1 << ", " << x2 << ", " << y2 << std::endl;
+                Rect box(x1,y1,x2-x1,y2-y1);
+                rectangle(frame, box, Scalar(0,0,255),2,LINE_8, 0);
+                imshow("face detection", frame);
+            }
+        }
+        int c = waitKey(100);
+        if(c == 27 || c == 13){
+            break;
+        }
+    }
 }

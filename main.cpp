@@ -1,19 +1,13 @@
-#include <iostream>
+//
+// Created by Guanyan Peng on 2022/5/3.
+// Last Update date: 2022/5/5
+//
+
 #include "opencv2/opencv.hpp"
 #include "quickdemo.h"
 using namespace cv;
 using namespace std;
 
-
-//int main() {
-//    // 注意.exe程序的位置导致img文件夹的相对路径写法发生改变，要写成"../"
-//    string path = "../img/29.bmp";
-//    // 使用nameWindow("窗口名", flags: 选择窗口的显示模式)，比如
-//    namedWindow("input", WINDOW_FREERATIO); // 以自由比例显示一张图
-//    showImageTest(path);
-//    destroyAllWindows();
-//    return 0;
-//}
 
 // day1：图像读取与显示
 //int main(int argc, char** argv){
@@ -271,7 +265,7 @@ using namespace std;
 //    return 0;
 //}
 
-// day19：图像翻转
+// day19：图像翻转+旋转
 //int main(int argc, char** argv){
 //    Mat img = imread("../test/test.jpeg");
 //    if(img.empty()) {
@@ -281,27 +275,13 @@ using namespace std;
 //    imshow("origin", img);
 //    QuickDemo qd;
 //    qd.flipDemo(img);
-//    waitKey(0);
-//    destroyAllWindows();
-//    return 0;
-//}
-
-// day20：图像旋转
-//int main(int argc, char** argv){
-//    Mat img = imread("../test/test.jpeg");
-//    if(img.empty()) {
-//        cout << "could not load image" << endl;
-//        return -1;
-//    }
-//    imshow("origin", img);
-//    QuickDemo qd;
 //    qd.rotateDemo(img);
 //    waitKey(0);
 //    destroyAllWindows();
 //    return 0;
 //}
 
-// day21：视频操作
+// day20：视频操作
 //int main(int argc, char** argv){
 //    Mat img = imread("../test/test.jpeg");
 //    if(img.empty()) {
@@ -317,18 +297,76 @@ using namespace std;
 //    return 0;
 //}
 
-// day22+23：图像直方图、2D直方图
-int main(int argc, char** argv){
-    Mat img = imread("../test/test.jpeg");
-    if(img.empty()) {
-        cout << "could not load image" << endl;
-        return -1;
-    }
+// day21：图像直方图、2D直方图
+//int main(int argc, char** argv){
+//    Mat img = imread("../avatar.jpeg");
+//    if(img.empty()) {
+//        cout << "could not load image" << endl;
+//        return -1;
+//    }
+//
+//    imshow("origin", img);
+//    QuickDemo qd;
+//    qd.showHistogramDemo(img);
+//    qd.showHistogram2DDemo(img);
+//    waitKey(0);
+//    destroyAllWindows();
+//    return 0;
+//}
 
-    imshow("origin", img);
+// day22：直方图均衡化
+//int main(int argc, char** argv){
+//    Mat img = imread("../test/test.jpeg");
+//    if(img.empty()) {
+//        cout << "could not load image" << endl;
+//        return -1;
+//    }
+//
+//    imshow("origin", img);
+//    QuickDemo qd;
+//    qd.histogramEqualizationDemo(img);
+//    waitKey(0);
+//    destroyAllWindows();
+//    return 0;
+//}
+
+// day23:图像卷积操作
+//int main(int argc, char** argv){
+//    Mat img = imread("../test/test.jpeg");
+//    if(img.empty()) {
+//        cout << "could not load image" << endl;
+//        return -1;
+//    }
+//
+//    imshow("origin", img);
+//    QuickDemo qd;
+//    qd.blurDemo(img);
+//    waitKey(0);
+//    destroyAllWindows();
+//    return 0;
+//}
+
+// day24:高斯模糊
+//int main(int argc, char** argv){
+//    Mat img = imread("../avatar.jpeg");
+//    if(img.empty()) {
+//        cout << "could not load image" << endl;
+//        return -1;
+//    }
+//
+//    imshow("origin", img);
+//    QuickDemo qd;
+//    qd.gaussianBlueDemo(img);
+//    qd.biFilterDemo(img);
+//    waitKey(0);
+//    destroyAllWindows();
+//    return 0;
+//}
+
+// day25:人脸检测Demo（借助OpenCV4的dnn模块）
+int main(int argc, char** argv){
     QuickDemo qd;
-    qd.showHistogramDemo(img);
-    qd.showHistogram2DDemo(img);
+    qd.faceDetectionDemo();
     waitKey(0);
     destroyAllWindows();
     return 0;
